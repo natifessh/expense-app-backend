@@ -2,7 +2,6 @@ const router = require("express").Router();
 const db = require("./database");
 const jwt = require("jsonwebtoken");
 
-// Authentication Middleware
 const authenticateToken = (req, res, next) => {
     const token = req.headers["authorization"].split(' ')[1];
     if (!token) return res.status(403).json({ error: "Access denied" });
@@ -13,8 +12,6 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
-
-// Get all expenses
 router.get("/all", authenticateToken, (req, res) => {
     const userId=req.user.id;
     const query = "SELECT * FROM expenses where user_id=$1";
@@ -24,8 +21,6 @@ router.get("/all", authenticateToken, (req, res) => {
         res.json(result.rows);
     });
 });
-
-// Get expenses by category
 router.get("/category/:category",authenticateToken, (req, res) => {
     const userId=req.user.id;
     const query = "SELECT * FROM expenses WHERE category = $1 AND user_id=$2";
@@ -36,8 +31,6 @@ router.get("/category/:category",authenticateToken, (req, res) => {
         res.json(result.rows);
     });
 });
-
-// Get single expense by ID
 router.get("/expense/:id",authenticateToken, (req, res) => {
     const userId=req.user.id;
     const query = "SELECT * FROM expenses WHERE id = $1 AND user_id=$2";
@@ -49,8 +42,6 @@ router.get("/expense/:id",authenticateToken, (req, res) => {
         res.json(result.rows[0]);
     });
 });
-
-// Update expense
 router.put("/update/:id", authenticateToken,(req, res) => {
     const userId=req.user.id;
     const { amt, category, description, date } = req.body;
@@ -67,8 +58,6 @@ router.put("/update/:id", authenticateToken,(req, res) => {
         res.json({ message: "Expense updated successfully" });
     });
 });
-
-// Delete expense
 router.delete("/delete/:id", authenticateToken,(req, res) => {
     const userId=req.user.id;
     const query = "SELECT * FROM expenses WHERE id = $1 AND user_id=$2";
@@ -85,8 +74,6 @@ router.delete("/delete/:id", authenticateToken,(req, res) => {
         });
     });
 });
-
-// Add new expense
 router.post("/add", authenticateToken, (req, res) => {
     const userId=req.user.id;
     const { amt, category, description, date } = req.body;
@@ -102,5 +89,17 @@ router.post("/add", authenticateToken, (req, res) => {
         res.json({ message: "Expense added successfully", id: result.rows[0].id });
     });
 });
+router.get("/rank",authenticateToken,(req,res)=>{
+    const query=`
+    SELECT users.id AS user_id, users.username, COALESCE(SUM(expenses.amount), 0) AS total_spent
+            FROM users
+            LEFT JOIN expenses ON users.id = expenses.user_id
+            GROUP BY users.id, users.username
+            ORDER BY total_spent DESC;`
+    db.query(query,(error,result)=>{
+        if(error) return res.status(500).json({error:error.message})
+        res.json(result.rows)
+    })
+})
 
 module.exports = router;
